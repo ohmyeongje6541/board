@@ -1,131 +1,97 @@
 package org.example.board.repository;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+
 import java.util.List;
 import org.example.board.entity.Post;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class PostRepository {
+public interface PostRepository extends JpaRepository<Post, Long> {
 
-    @PersistenceContext
-    private EntityManager em;
+    // 기본 CRUD 메서드
 
-    public Post save(Post post) {
-        em.persist(post);
-        return post;
-    }
+    // 저장 (INSERT or UPDATE)
+    // Post save(Post entity);
 
-    public Post findById(Long id) {
-        return em.find(Post.class, id);
-    }
+    // 조회
+    // Optional<Post> findById(Long id);
+    // List<Post> findAll();
+    // List<Post> findAll(Sort sort);
 
-    public List<Post> findAll() {
-        // EM => 단일 엔티티 조작만 기본 제공
-        String jpql = "SELECT p FROM Post p";
-        return em.createQuery(jpql, Post.class).getResultList();
-    }
+    // 삭제
+    // void deleteById(Long id);
+    // void delete(Post entity);
 
-    public Post update(Post post) {
-        return em.merge(post);
-    }
+    // 개수 조회
+    // long count();
+    // 존재 여부 확인
+    // boolean existsById(Long id);
 
-    public void delete(Post post) {
-        em.remove(post);
-    }
+    // findBy + 필드명 + 조건
 
-    public List<Post> findByTitleContaining(String keyword) {
-        String jpql = "SELECT p FROM Post p WHERE p.title LIKE :keyword ";
-        return em.createQuery(jpql, Post.class)
-            .setParameter("keyword", "%" + keyword + "%")
-            .getResultList();
-    }
+    // LIKE %keyword%
+    List<Post> findByTitleContaining(String keyword);
 
-    // 1. 비영속 (id가 부여되지 않음)
-    // new Post("title", "content");
+    // @Query 방식
+    @Query("SELECT p FROM Post p WHERE p.title LIKE %:keyword%")
+    List<Post> searchByTitle(@Param("keyword") String keyword);
 
-    // => persist()
+    // LIKE keyword%
+    List<Post> findByTitleStartingWith(String keyword);
 
-    // 2. 영속 (id가 부여됨)
-    // em.persist(post);
+    // >
+    List<Post> findByIdGreaterThan(Long id);
 
-    // => detach(), clear()
+    // ORDER BY id DESC
+    List<Post> findAllByOrderByIdDesc();
 
-    // 3. 준영속 (detached 수정하는중)
-    // em.detach(post)
+    // 제목 or 내용 으로 검색
+    List<Post> findByTitleContainingOrContentContaining(
+        String titleKeyword, String contentKeyword
+    );
 
-    // => merger() => 영속으로 돌아감
+    // 제목 or 내용 으로 검색
+    @Query("""
+        SELECT p FROM Post p 
+        WHERE p.title LIKE %:keyword% OR p.content LIKE %:keyword% 
+        ORDER BY p.createdAt DESC
+    """)
+    List<Post> searchByKeyword(@Param("keyword") String keyword);
 
-    // 4. 삭제
-    // em.remove(post)
+    @Query(value="""
+        SELECT * FROM post 
+        WHERE title LIKE %:keyword% 
+        ORDER BY id DESC
+    """, nativeQuery=true)
+    List<Post> searchByTitleNative(@Param("keyword") String keyword);
 
+
+    // 1. query method
+    List<Post> findTop3ByOrderByCreatedAtDesc();
+
+    // 2. jpql
+    @Query("""
+        SELECT p FROM Post p
+        ORDER BY p.createdAt DESC
+    """)
+    List<Post> findRecentPosts(Pageable pageable);
+
+    // 3. native sql
+    @Query(value= """
+        SELECT * FROM post
+        ORDER BY created_at DESC
+        LIMIT 4
+    """, nativeQuery = true)
+    List<Post> findRecentPostsNative();
+
+    // List<Post> findAll() => JpaRepository가 구현 해둔 메소드
+    // 오버로딩 (동일한 이름이지만 매개변수가 다름)
+    Page<Post> findAll(Pageable pageable);
+
+    Page<Post> findByTitleContaining(String keyword, Pageable pageable);
 }
-
-
-
-
-//package com.example.board.repository;
-//
-//import com.example.board.dto.PostDto;
-//import lombok.RequiredArgsConstructor;
-//import org.springframework.jdbc.core.JdbcTemplate;
-//import org.springframework.jdbc.core.RowMapper;
-//import org.springframework.stereotype.Repository;
-//
-//import java.util.List;
-//
-//@Repository
-//@RequiredArgsConstructor
-//public class PostRepository {
-//
-//    private final JdbcTemplate jdbcTemplate;
-//
-//    // @RequiredArgsConstructor를 통해 자동생성
-////    public PostRepository(JdbcTemplate jdbcTemplate) {
-////        this.jdbcTemplate = jdbcTemplate;
-////    }
-//
-//    private final RowMapper<PostDto> rowMapper = (rs, rowNum) -> {
-//        return new PostDto(
-//                rs.getLong("id"),
-//                rs.getString("title"),
-//                rs.getString("content"),
-//                rs.getTimestamp("created_at").toLocalDateTime()
-//        );
-//    };
-//
-//    // 전체 조회
-//    public List<PostDto> findAll() {
-//        String sql = "SELECT * FROM post";
-//        return jdbcTemplate.query(sql, rowMapper);
-//    }
-//
-//    // 상세조회
-//    public PostDto findById(Long id) {
-//        String sql = "SELECT * FROM post WHERE id = ?";
-//
-//        // queryForObject => 단일 행 조회
-//        PostDto post = jdbcTemplate.queryForObject(sql, rowMapper, id);
-//
-//        return post;
-//    }
-//
-//    public void save(PostDto postDto) {
-//        String sql = "INSERT INTO post (title, content) VALUES (?, ?)";
-//        jdbcTemplate.update(sql, postDto.getTitle(), postDto.getContent());
-//    }
-//
-//    public void update(Long id, PostDto postDto) {
-//        String sql = "UPDATE post SET title = ?, content = ? WHERE id = ?";
-//        jdbcTemplate.update(sql, postDto.getTitle(), postDto.getContent(), id);
-//    }
-//
-//    public void delete(Long id) {
-//        String sql = "DELETE FROM post WHERE id = ?";
-//        jdbcTemplate.update(sql, id);
-//    }
-//
-//
-//
-//}
