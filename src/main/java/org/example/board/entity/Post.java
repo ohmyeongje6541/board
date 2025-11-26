@@ -1,6 +1,8 @@
 package org.example.board.entity;
 
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -27,6 +29,12 @@ public class Post {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @OneToMany(mappedBy = "post",
+        cascade = CascadeType.REMOVE,
+        orphanRemoval = true
+    )
+    private List<Comment> comments = new ArrayList<>();
+
     public Post(String title, String content) {
         this.title = title;
         this.content = content;
@@ -36,6 +44,18 @@ public class Post {
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+    }
+
+
+    // 연관관계 편의메서드
+    public void addComment(Comment comment) {
+        comments.add(comment);
+        comment.setPost(this);
+    }
+
+    public void removeComment(Comment comment) {
+        comments.remove(comment);
+        comment.setPost(null);
     }
 
 }

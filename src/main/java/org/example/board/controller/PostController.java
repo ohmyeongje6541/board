@@ -1,12 +1,16 @@
 package org.example.board.controller;
 
 import java.util.List;
+import org.example.board.dto.CommentDto;
+import org.example.board.entity.Comment;
+import org.example.board.service.CommentService;
 import org.example.board.service.PostService;
 import org.example.board.dto.PostDto;
 import org.example.board.entity.Post;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.stereotype.Controller;
@@ -18,10 +22,12 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class PostController {
     private final PostService postService;
+    private final CommentService commentService;
 //    private final PostRepository postRepository;
 
 //    public PostController(PostRepository postRepository) {
 //        this.postRepository = postRepository;
+//        this.commentService = commentService;
 //    }
 
     @GetMapping
@@ -52,7 +58,12 @@ public class PostController {
     @GetMapping("/{id}")
     public String detail(@PathVariable Long id, Model model) {
         Post post = postService.getPostById(id);
+//        List<Comment> comments = commentService.getCommentsByPostId(id);
+        List<Comment> comments = post.getComments();
+
+        model.addAttribute("comment", new CommentDto());
         model.addAttribute("post", post);
+        model.addAttribute("comments", comments);
         return "posts/detail";
     }
 
@@ -111,10 +122,10 @@ public class PostController {
     @GetMapping("/search")
     public String search(
         @RequestParam String keyword,
-        @PageableDefault(sort = "id") Pageable pageable,
-        Model model)
-    {
-        Page<Post> postPage = postService.searchPostPage(keyword, pageable);
+        @PageableDefault(sort="id") Pageable pageable,
+        Model model
+    ) {
+        Page<Post> postPage = postService.searchPostsPage(keyword, pageable);
 
         int currentPage = postPage.getNumber();
         int totalPages = postPage.getTotalPages();
@@ -124,6 +135,7 @@ public class PostController {
         model.addAttribute("postPage", postPage);
         model.addAttribute("startPage", startPage);
         model.addAttribute("endPage", endPage);
+        model.addAttribute("keyword", keyword);
         return "posts/search";
     }
 
@@ -140,6 +152,36 @@ public class PostController {
     public String dummy() {
         postService.createDummyPosts(100);
         return "redirect:/posts";
+    }
+
+    @GetMapping("/more")
+    public String more(
+        @PageableDefault Pageable pageable,
+        Model model
+    ) {
+        Slice<Post> postSlice = postService.getPostsSlice(pageable);
+        model.addAttribute("postSlice", postSlice);
+        return "posts/list-more";
+    }
+
+
+    // Comment
+    @PostMapping("/{postId}/comments")
+    public String createComment(
+        @PathVariable Long postId,
+        @ModelAttribute Comment comment
+    ) {
+        commentService.createComment(postId, comment);
+        return "redirect:/posts/" + postId;
+    }
+
+    @PostMapping("/{postId}/comments/{cId}/delete")
+    public String deleteComment(
+        @PathVariable Long postId,
+        @PathVariable Long cId
+    ) {
+        commentService.deleteComment(cId);
+        return "redirect:/posts/" + postId;
     }
 
 

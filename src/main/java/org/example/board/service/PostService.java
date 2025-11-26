@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,9 +43,10 @@ public class PostService {
 
 
     public List<Post> getAllPosts() {
-        return postRepository.findAll(
-            Sort.by(Sort.Direction.DESC, "id")
-        );
+//        return postRepository.findAll(
+//                Sort.by(Sort.Direction.DESC, "id")
+//        );
+        return postRepository.findAllByOrderByIdDesc();
     }
 
     @Transactional
@@ -106,6 +108,7 @@ public class PostService {
 //        return postRepository.searchByKeyword(keyword);
         return postRepository.searchByTitleNative(keyword);
     }
+
     public List<Post> getRecentPosts() {
 //        return postRepository.findTop3ByOrderByCreatedAtDesc();
 
@@ -126,7 +129,12 @@ public class PostService {
         }
     }
 
-    public Page<Post> searchPostPage(String keyword, Pageable pageable) {
+    public Page<Post> searchPostsPage(String keyword, Pageable pageable) {
         return postRepository.findByTitleContaining(keyword, pageable);
     }
+
+    public Slice<Post> getPostsSlice(Pageable pageable) {
+        return postRepository.findAllBy(pageable);
+    }
+
 }
